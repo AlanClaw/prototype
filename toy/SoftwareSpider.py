@@ -2,6 +2,15 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
+class FetchSoftware(object):
+    """
+    """
+    
+    def __init__(self):
+        pass
+    
+    
+
 def main():
     pass
 
