@@ -2,14 +2,85 @@ import logging
 _logger = logging.getLogger(__name__)
 
 import os
+import ConfigParser, urllib2, re
 
-class FetchSoftware(object):
+def main():
     """
+    """
+    logging.basicConfig(
+        format = '%(asctime)s %(levelname)s : %(message)s',
+        level = logging.DEBUG,
+        datefmt = '%m/%d/%y %H:%M:%S'
+    )
+    
+    SoftwareSpider('aaa', 'bbb').parse_html("sss")
+#     SoftwareSpider('aaa', 'bbb').\
+#         get_link( "http://notepad-plus-plus.org/download", 
+#                   "^http://download.tuxfamily.org/notepadplus*Installer.exe$" )
+#     get_page_content()
+    
+
+class SoftwareSpider(object):
+    """
+    @note: This class is aim to auto get software by a defined software pattern
     """
     
-    def __init__(self):
-        pass
+    sft_ini = None
+    sft_base_dir = None
+    
+    def __init__(self, sft_ini, sft_base_dir = None):
+        """
+        """
+        self.sft_ini = sft_ini
+        self.sft_base_dir = sft_base_dir
 
+    def run(self):
+        """
+        """
+        # check all the softwares from base folder to see if need download or not
+        # download all the software from list and show the status 
+        config = ConfigParser.SafeConfigParser()
+        config.optionxform = str
+        config.read(self.sft_ini)
+        
+        for sft_name in config.sections():
+            
+            # from page to find out target download link
+            # create thread to download the software to 'sft_base_dir'
+            
+            url = config.get(sft_name, "download_page")
+            url_ptn = config.get(sft_name, "download_link_ptn")
+            download_link = self.get_download_link(url, url_ptn)
+            _logger.debug("dwonload_link: %s" %download_link)
+    
+    def get_link(self, url, link_ptn):
+        """
+        """
+        _logger.debug("url:%s\nsearch download pattern:%s" %(url, link_ptn))
+        
+        link = ""
+        content = urllib2.urlopen(url).read()
+        
+        pattern = re.compile(link_ptn)
+        match = pattern.match(content)
+        
+        assert match is not None, "Link not found"
+        _logger.debug(match.group(0))
+        
+        return link
+    
+    
+    def parse_html(self, page_content):
+        """
+        """
+        pass
+    
+    def compare_software_version(self, sft_name1, sft_name2):
+        """
+        @note: Implement this if needed
+        """
+        return NotImplementedError
+    
 def get_desktop_path():
     """
     HKEY_CURRENT_USER
@@ -18,7 +89,7 @@ def get_desktop_path():
 
     desktop_path = ""
 
-    aReg = _winreg.ConnectRegistry(None, _winreg.HKEY_CURRENT_USER)    
+    aReg = _winreg.ConnectRegistry(None, _winreg.HKEY_CURRENT_USER)
     aKey = _winreg.OpenKey(aReg, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
 
     try:
@@ -44,25 +115,6 @@ def download_file():
         output.write(download_file.read())
 
 
-def get_page_content():
-    
-    import urllib2
-    content = urllib2.urlopen('http://notepad-plus-plus.org/download/v6.6.4.html').read()
 
-    print content
-
-
-def main():
-    """
-    """
-    download_file()
-    
 if __name__ == "__main__":
-    
-    logging.basicConfig(
-        format = '%(asctime)s %(levelname)s : %(message)s',
-        level = logging.INFO,
-        datefmt = '%m/%d/%y %H:%M:%S'
-    )
-
     main()
