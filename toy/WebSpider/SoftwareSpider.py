@@ -3,6 +3,7 @@ _logger = logging.getLogger(__name__)
 
 import os
 import ConfigParser, urllib2, re
+from HtmlParser import HtmlLinkParser
 
 def main():
     """
@@ -13,67 +14,77 @@ def main():
         datefmt = '%m/%d/%y %H:%M:%S'
     )
     
-    SoftwareSpider('aaa', 'bbb').parse_html("sss")
-#     SoftwareSpider('aaa', 'bbb').\
-#         get_link( "http://notepad-plus-plus.org/download", 
-#                   "^http://download.tuxfamily.org/notepadplus*Installer.exe$" )
-#     get_page_content()
-    
-
+    sft_spider = SoftwareSpider('software.ini', 'bbb')
+    sft_spider.get_download_link(sft_spider.get_ini_reader.get('SystemExplorer_portable', 'download_page'), 
+                                 "^(http://systemexplorer.net/download-archive/).*((/SystemExplorerPortable_)\d+\.zip)%")
+'''
+'''
 class SoftwareSpider(object):
     """
     @note: This class is aim to auto get software by a defined software pattern
     """
     
-    sft_ini = None
-    sft_base_dir = None
+    _sft_ini = None
+    _sft_dir = None
+    _config = None
     
-    def __init__(self, sft_ini, sft_base_dir = None):
+    def __init__(self, _sft_ini, _sft_dir = None):
         """
         """
-        self.sft_ini = sft_ini
-        self.sft_base_dir = sft_base_dir
+        self._sft_ini = _sft_ini
+        self._sft_dir = _sft_dir
 
     def run(self):
         """
         """
         # check all the softwares from base folder to see if need download or not
         # download all the software from list and show the status 
-        config = ConfigParser.SafeConfigParser()
-        config.optionxform = str
-        config.read(self.sft_ini)
         
-        for sft_name in config.sections():
+        for sft_name in self.get_ini_reader.sections():
             
             # from page to find out target download link
-            # create thread to download the software to 'sft_base_dir'
-            
-            url = config.get(sft_name, "download_page")
-            url_ptn = config.get(sft_name, "download_link_ptn")
+            # create thread to download the software to '_sft_dir'
+            url = self.get_ini_reader.get(sft_name, "download_page")
+            url_ptn = self.get_ini_reader.get(sft_name, "download_link_ptn")
             download_link = self.get_download_link(url, url_ptn)
             _logger.debug("dwonload_link: %s" %download_link)
     
-    def get_link(self, url, link_ptn):
+    @property
+    def get_ini_reader(self):
+        
+        if self._config is None:
+            self._config = ConfigParser.SafeConfigParser()
+            self._config.optionxform = str
+            self._config.read(self._sft_ini)
+        
+        return self._config
+        
+    def get_download_link(self, url, link_ptn):
         """
         """
         _logger.debug("url:%s\nsearch download pattern:%s" %(url, link_ptn))
         
-        link = ""
+        # get content from page and filter links
         content = urllib2.urlopen(url).read()
         
-        pattern = re.compile(link_ptn)
-        match = pattern.match(content)
+        parser = HtmlLinkParser()
+        parser.feed(content)
+        links = parser.get_all_href_value()
         
-        assert match is not None, "Link not found"
-        _logger.debug(match.group(0))
+        _logger.debug("All links:")
+        _logger.debug(links)
         
-        return link
-    
-    
-    def parse_html(self, page_content):
-        """
-        """
-        pass
+        # find target link from all links
+        re_format = re.compile(link_ptn)
+        
+        matchs = [link for link in links if re_format.match(link) is not None]
+
+        _logger.debug("Match links:")
+        _logger.debug(matchs)
+        
+        assert len(matchs) == 1, "Unique link not found!!"
+        
+        return matchs[0]
     
     def compare_software_version(self, sft_name1, sft_name2):
         """
