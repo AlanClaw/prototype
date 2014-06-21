@@ -15,8 +15,9 @@ def main():
     )
     
     sft_spider = SoftwareSpider('software.ini', 'bbb')
-    sft_spider.get_download_link(sft_spider.get_ini_reader.get('SystemExplorer_portable', 'download_page'), 
-                                 "^(http://systemexplorer.net/download-archive/).*((/SystemExplorerPortable_)\d+\.zip)%")
+    software = 'SystemExplorer_portable'
+    sft_spider.get_download_link(sft_spider.get_ini_reader.get(software, 'download_page'), 
+                                 sft_spider.get_ini_reader.get(software, 'download_link_ptn'))
 '''
 '''
 class SoftwareSpider(object):
@@ -47,6 +48,9 @@ class SoftwareSpider(object):
             url = self.get_ini_reader.get(sft_name, "download_page")
             url_ptn = self.get_ini_reader.get(sft_name, "download_link_ptn")
             download_link = self.get_download_link(url, url_ptn)
+            if self.get_ini_reader.get(sft_name, "download_link_ptn"):
+                pass
+            
             _logger.debug("dwonload_link: %s" %download_link)
     
     @property
@@ -65,14 +69,7 @@ class SoftwareSpider(object):
         _logger.debug("url:%s\nsearch download pattern:%s" %(url, link_ptn))
         
         # get content from page and filter links
-        content = urllib2.urlopen(url).read()
-        
-        parser = HtmlLinkParser()
-        parser.feed(content)
-        links = parser.get_all_href_value()
-        
-        _logger.debug("All links:")
-        _logger.debug(links)
+        links = self._parse_download_link(url)
         
         # find target link from all links
         re_format = re.compile(link_ptn)
@@ -85,6 +82,25 @@ class SoftwareSpider(object):
         assert len(matchs) == 1, "Unique link not found!!"
         
         return matchs[0]
+    
+    def _parse_download_link(self, url):
+        
+        from bs4 import BeautifulSoup
+        
+        page = urllib2.urlopen(url)
+        soup = BeautifulSoup(page.read(), 'html5lib')
+        links = soup.findAll('a')
+        all_links = []
+        
+        for link in links:
+            try:
+                _logger.debug("link string:%s" %link.string)
+                _logger.debug(link['href'])
+                all_links.append(link['href'])
+            except:
+                logging.exception('_parse_download_link')
+                
+        return all_links
     
     def compare_software_version(self, sft_name1, sft_name2):
         """
