@@ -1,9 +1,13 @@
 import logging
 _logger = logging.getLogger(__name__)
 
-import os
-import ConfigParser, urllib2, re
+import os, ConfigParser, re, shutil
+import urlparse, urllib, urllib2
 from HtmlParser import HtmlLinkParser
+
+'''
+@todo: deal with file name
+'''
 
 def main():
     """
@@ -14,12 +18,18 @@ def main():
         datefmt = '%m/%d/%y %H:%M:%S'
     )
     
-    sft_spider = SoftwareSpider('software.ini', r'C:\Users\alan\Desktop\test_dir')
+    fld_path = os.path.join(os.environ['userprofile'], 'Desktop', 'test_dir')
+    
+    sft_spider = SoftwareSpider('software.ini', fld_path)
 #     software = 'SystemExplorer_portable'
 #     sft_spider.get_download_link(software,
 #                                  sft_spider.get_ini_reader.get(software, 'download_page'), 
 #                                  sft_spider.get_ini_reader.get(software, 'download_link_ptn'))
     sft_spider.run()
+#     url = r'https://download.mozilla.org/?product=firefox-30.0&os=win&lang=en-US'
+#     url = r'http://download.tuxfamily.org/notepadplus/6.6.7/npp.6.6.7.Installer.exe'
+#     r = urllib2.urlopen(urllib2.Request(url))
+#     print sft_spider._get_file_name(url, r)
     
     
 class SoftwareSpider(object):
@@ -57,7 +67,7 @@ class SoftwareSpider(object):
             download_link = self.get_download_link(sft_name, url, url_ptn)
             _logger.debug("dwonload_link: %s" %download_link)
 
-            self._download_file(download_link, sft_name)
+            self._download_file(download_link)
             
     @property
     def get_ini_reader(self):
@@ -82,7 +92,7 @@ class SoftwareSpider(object):
         
         matchs = [link for link in links if re_format.match(link) is not None]
         _logger.debug("Match links:")
-        _logger.debug(matchs)        
+        _logger.debug(matchs)
         assert len(matchs) == 1, "Unique link not found!!"
         
         download_link = matchs[0]
@@ -102,8 +112,8 @@ class SoftwareSpider(object):
         
         for link in links:
             try:
-                _logger.debug("link string:%s" %link.string)
-                _logger.debug(link['href'])
+#                 _logger.debug("link string:%s" %link.string)
+#                 _logger.debug(link['href'])
                 all_links.append(link['href'])
             except:
                 logging.exception('_parse_download_link')
@@ -132,14 +142,44 @@ class SoftwareSpider(object):
     
         return desktop_path
 
-    def _download_file(self, url, file_name):
-
-        file_path = os.path.join(self._sft_dir, file_name)
-        _logger.debug("file_path = %s" %file_path)
+    def _download_file(self, url, file_name = None):
+        """
+        @note: Used to downlaod file from url link
+        """
+        # check folder exist or not
+        if not os.path.isdir(self._sft_dir):
+            os.makedirs(self._sft_dir)
         
+        r = urllib2.urlopen(urllib2.Request(url))
         download_file = urllib2.urlopen(url)
-        with open(file_path, 'wb') as output:
-            output.write(download_file.read())
+        
+        try:
+            file_name = file_name or self._get_file_name(url,r)
+            file_path = os.path.join(self._sft_dir, file_name)
+            _logger.debug("dwonload to path = %s" %file_path)
+            
+            with open(file_path, 'wb') as f:
+                shutil.copyfileobj(r,f)
+        finally:
+            r.close()
+        
+        
+#         with open(file_path, 'wb') as output:
+#             output.write(download_file.read())
+
+    def _get_file_name(self, url, openUrl):
+        if 'Content-Disposition' in openUrl.info():
+            # If the response has Content-Disposition, try to get filename from it
+            cd = dict(map(
+                lambda x: x.strip().split('=') if '=' in x else (x.strip(),''),
+                openUrl.info()['Content-Disposition'].split(';')))
+            if 'filename' in cd:
+                filename = cd['filename'].strip("\"'")
+                if filename: return filename
+        
+        # if no filename was found above, parse it out of the final URL.
+        name = os.path.basename(urlparse.urlsplit(openUrl.url)[2])
+        return urllib.unquote(name).decode('utf8')
 
     def compare_software_version(self, sft_name1, sft_name2):
         """
