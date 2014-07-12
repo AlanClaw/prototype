@@ -6,8 +6,16 @@ import urlparse, urllib, urllib2
 from HtmlParser import HtmlLinkParser
 
 '''
-@todo: deal with file name
+@todo: [done] - deal with file name.
+@todo: handle re-direct page
 '''
+
+"""
+@attention: Please have the following dependence module to execute this program
+easy_install html5lib
+easy_install BeautifulSoup4
+pip install requests 
+"""
 
 def main():
     """
@@ -30,8 +38,33 @@ def main():
 #     url = r'http://download.tuxfamily.org/notepadplus/6.6.7/npp.6.6.7.Installer.exe'
 #     r = urllib2.urlopen(urllib2.Request(url))
 #     print sft_spider._get_file_name(url, r)
+#     test2()
+
+def test():
+    import requests
     
+    response = requests.get(r'http://systemexplorer.net/download-archive/5.8.0/SystemExplorerPortable_580.zip')
+    if response.history:
+        print "Request was redirected"
+        for resp in response.history:
+            print resp.status_code, resp.url
+        print "Final destination:"
+        print response.status_code, response.url
+    else:
+        print "Request was not redirected"
+
+def test2():
+    import urllib2
     
+    def get_redirected_url(url):
+        opener = urllib2.build_opener(urllib2.HTTPRedirectHandler)
+        request = opener.open(url)
+        return request.url
+    
+    print get_redirected_url(r"http://systemexplorer.net/download-archive/5.8.0/SystemExplorerPortable_580.zip")
+
+
+
 class SoftwareSpider(object):
     """
     @note: This class is aim to auto get software by a defined software pattern
@@ -79,29 +112,28 @@ class SoftwareSpider(object):
         
         return self._config
         
-    def get_download_link(self,sft, url, link_ptn):
+    def get_download_link(self, sft, url, link_ptn):
         """
         """
         _logger.debug("url:%s\nsearch download pattern:%s" %(url, link_ptn))
         
         # get content from page and filter links
-        links = self._parse_download_link(url)
-        
-        # find target link from all links
-        re_format = re.compile(link_ptn)
-        
-        matchs = [link for link in links if re_format.match(link) is not None]
-        _logger.debug("Match links:")
-        _logger.debug(matchs)
+        matchs = self._parse_link(url, link_ptn)
         assert len(matchs) == 1, "Unique link not found!!"
-        
         download_link = matchs[0]
+
         if self.get_ini_reader.has_option(sft, "dwonload_link_host"):
             download_link = self.get_ini_reader.get(sft, "dwonload_link_host") + download_link
         
+        if self.get_ini_reader.has_option(sft, "redirect_link_ptn"):
+            redirect_ptn = self.get_ini_reader.get(sft, "redirect_link_ptn")
+            matchs = self._parse_link(download_link, redirect_ptn)
+            assert len(matchs) == 1, "Unique redirect link not found!!"
+            download_link = self.get_ini_reader.get(sft, "dwonload_link_host") + matchs[0]
+            
         return download_link
     
-    def _parse_download_link(self, url):
+    def _parse_link(self, url, ptn):
         
         from bs4 import BeautifulSoup
         
@@ -116,9 +148,17 @@ class SoftwareSpider(object):
 #                 _logger.debug(link['href'])
                 all_links.append(link['href'])
             except:
-                logging.exception('_parse_download_link')
+                logging.exception('_parse_link fail')
                 
-        return all_links
+        # find target link from all links
+        re_format = re.compile(ptn)
+        matchs = [link for link in all_links if re_format.match(link) is not None]
+        
+        _logger.debug("Match links:")
+        _logger.debug(matchs)
+
+        return matchs
+#         return all_links
     
     def _get_desktop_path(self):
         """
@@ -150,28 +190,24 @@ class SoftwareSpider(object):
         if not os.path.isdir(self._sft_dir):
             os.makedirs(self._sft_dir)
         
-        r = urllib2.urlopen(urllib2.Request(url))
+        request_url = urllib2.urlopen(urllib2.Request(url))
         download_file = urllib2.urlopen(url)
         
         try:
-            file_name = file_name or self._get_file_name(url,r)
+            file_name = file_name or self._get_file_name(url, request_url)
             file_path = os.path.join(self._sft_dir, file_name)
             _logger.debug("dwonload to path = %s" %file_path)
             
-            with open(file_path, 'wb') as f:
-                shutil.copyfileobj(r,f)
+            with open(file_path, 'wb') as fout:
+                shutil.copyfileobj(request_url, fout)
         finally:
-            r.close()
-        
-        
-#         with open(file_path, 'wb') as output:
-#             output.write(download_file.read())
+            request_url.close()
 
     def _get_file_name(self, url, openUrl):
         if 'Content-Disposition' in openUrl.info():
             # If the response has Content-Disposition, try to get filename from it
             cd = dict(map(
-                lambda x: x.strip().split('=') if '=' in x else (x.strip(),''),
+                lambda x: x.strip().split('=') if '=' in x else (x.strip(), ''),
                 openUrl.info()['Content-Disposition'].split(';')))
             if 'filename' in cd:
                 filename = cd['filename'].strip("\"'")
