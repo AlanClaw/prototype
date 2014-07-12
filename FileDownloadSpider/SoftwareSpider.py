@@ -4,10 +4,6 @@ _logger = logging.getLogger(__name__)
 import os, ConfigParser, re, shutil
 import urlparse, urllib, urllib2
 
-'''
-@todo: [done] - deal with file name.
-@todo: handle re-direct page
-'''
 
 """
 @attention: Please have the following dependence module to execute this program
@@ -29,22 +25,6 @@ def main():
     
     sft_spider = SoftwareSpider('software.ini', fld_path)
     sft_spider.run()
-#     software = 'SystemExplorer_portable'
-#     sft_spider.get_download_link(software,
-#                                  sft_spider.get_ini_reader.get(software, 'download_page'), 
-#                                  sft_spider.get_ini_reader.get(software, 'download_link_ptn'))
-    
-#     url = r'https://download.mozilla.org/?product=firefox-30.0&os=win&lang=en-US'
-#     url = r'http://download.tuxfamily.org/notepadplus/6.6.7/npp.6.6.7.Installer.exe'
-#     r = urllib2.urlopen(urllib2.Request(url))
-#     print sft_spider._get_file_name(url, r)
-#     test2()
-
-    
-# def _get_redirected_url(url):
-#     opener = urllib2.build_opener(urllib2.HTTPRedirectHandler)
-#     request = opener.open(url)
-#     return request.url
     
 
 class SoftwareSpider(object):
