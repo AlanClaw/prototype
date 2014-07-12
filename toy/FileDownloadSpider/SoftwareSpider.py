@@ -3,7 +3,6 @@ _logger = logging.getLogger(__name__)
 
 import os, ConfigParser, re, shutil
 import urlparse, urllib, urllib2
-from HtmlParser import HtmlLinkParser
 
 '''
 @todo: [done] - deal with file name.
@@ -29,41 +28,24 @@ def main():
     fld_path = os.path.join(os.environ['userprofile'], 'Desktop', 'test_dir')
     
     sft_spider = SoftwareSpider('software.ini', fld_path)
+    sft_spider.run()
 #     software = 'SystemExplorer_portable'
 #     sft_spider.get_download_link(software,
 #                                  sft_spider.get_ini_reader.get(software, 'download_page'), 
 #                                  sft_spider.get_ini_reader.get(software, 'download_link_ptn'))
-    sft_spider.run()
+    
 #     url = r'https://download.mozilla.org/?product=firefox-30.0&os=win&lang=en-US'
 #     url = r'http://download.tuxfamily.org/notepadplus/6.6.7/npp.6.6.7.Installer.exe'
 #     r = urllib2.urlopen(urllib2.Request(url))
 #     print sft_spider._get_file_name(url, r)
 #     test2()
 
-def test():
-    import requests
     
-    response = requests.get(r'http://systemexplorer.net/download-archive/5.8.0/SystemExplorerPortable_580.zip')
-    if response.history:
-        print "Request was redirected"
-        for resp in response.history:
-            print resp.status_code, resp.url
-        print "Final destination:"
-        print response.status_code, response.url
-    else:
-        print "Request was not redirected"
-
-def test2():
-    import urllib2
+# def _get_redirected_url(url):
+#     opener = urllib2.build_opener(urllib2.HTTPRedirectHandler)
+#     request = opener.open(url)
+#     return request.url
     
-    def get_redirected_url(url):
-        opener = urllib2.build_opener(urllib2.HTTPRedirectHandler)
-        request = opener.open(url)
-        return request.url
-    
-    print get_redirected_url(r"http://systemexplorer.net/download-archive/5.8.0/SystemExplorerPortable_580.zip")
-
-
 
 class SoftwareSpider(object):
     """
@@ -119,7 +101,11 @@ class SoftwareSpider(object):
         
         # get content from page and filter links
         matchs = self._parse_link(url, link_ptn)
-        assert len(matchs) == 1, "Unique link not found!!"
+        if len(matchs) != 1:
+            _logger.debug("match links:")
+            _logger.debug(matchs)
+            print "Multiple links found!! Choose the first one..."
+            
         download_link = matchs[0]
 
         if self.get_ini_reader.has_option(sft, "dwonload_link_host"):
@@ -196,7 +182,7 @@ class SoftwareSpider(object):
         try:
             file_name = file_name or self._get_file_name(url, request_url)
             file_path = os.path.join(self._sft_dir, file_name)
-            _logger.debug("dwonload to path = %s" %file_path)
+            _logger.debug("download to path = %s" %file_path)
             
             with open(file_path, 'wb') as fout:
                 shutil.copyfileobj(request_url, fout)
@@ -216,6 +202,19 @@ class SoftwareSpider(object):
         # if no filename was found above, parse it out of the final URL.
         name = os.path.basename(urlparse.urlsplit(openUrl.url)[2])
         return urllib.unquote(name).decode('utf8')
+
+    def _get_redirected_url(self, url):
+        import requests
+        
+        response = requests.get(url)
+        if response.history:
+            _logger.debug("Request was redirected")
+            for resp in response.history:
+                _logger.debug(resp.status_code, resp.url)
+            _logger.debug("Final destination:")
+            _logger.debug(response.status_code, response.url)
+        else:
+            _logger.debug("Request was not redirected")
 
     def compare_software_version(self, sft_name1, sft_name2):
         """
