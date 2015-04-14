@@ -201,5 +201,6 @@ if __name__ == "__main__":
         datefmt = '%m/%d/%y %H:%M:%S'
     )
     
-    boxscore_generator = ApalBoxscoreManager(r'http://apal.linchen.com.tw/files/600-1000-177.php')
+#     boxscore_generator = ApalBoxscoreManager(r'http://apal.linchen.com.tw/files/600-1000-177.php')
+    boxscore_generator = ApalBoxscoreManager(r'http://tpbasketball.com.tw/files/600-1000-196.php')
     boxscore_generator.run_flow()
