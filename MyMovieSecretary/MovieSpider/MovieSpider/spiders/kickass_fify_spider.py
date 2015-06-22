@@ -33,7 +33,10 @@ class KickassFifySpider(Spider):
 
         for raw_sel in response.xpath('//tr')[2:]: 
 #             print raw_sel
-            movie_item['movie_name_vintage'] = raw_sel.xpath('.//td[1]/div[2]/div/a/text()').extract()[0]
+            movie_name_vintage = raw_sel.xpath('.//td[1]/div[2]/div/a/text()').extract()[0]
+            token = movie_name_vintage.split(u"(")
+            movie_item['movie_name']         = token[0].strip()
+            movie_item['movie_vintage']      = token[1].split(u")")[0].strip()
             movie_item['torrent_dwn_link']   = \
                 raw_sel.xpath(".//td[1]/div[1]/a[@class='idownload icon16']/@href").extract()[0]
             movie_item['file_size_num']      = raw_sel.xpath('.//td[2]/text()').extract()[0]
