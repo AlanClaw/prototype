@@ -32,15 +32,17 @@ class MoviespiderPipeline(object):
         def wrapper(self, item, spider):
             '''
             '''
-            print 'ccc'
-            # message template for debugging
-            msg = '%%s %s pipeline step' % (self.__class__.__name__)
+#             print 'check_spider_pipeline():Wrapper()'
             
-            print self.__class__
-            print spider.pipeline
+#             print self.__class__
+#             print spider.pipeline
             
             # if class is in the spider's pipeline, then use the
             # process_item_method method normally.
+            
+            # message template for debugging
+            msg = '%%s %s pipeline step' % (self.__class__.__name__)
+            
             if self.__class__ in spider.pipeline:
                 
                 if self.file is None:
@@ -56,8 +58,6 @@ class MoviespiderPipeline(object):
                 return item
     
         return wrapper
-
-
   
     @check_spider_pipeline        
     def process_item(self, item, spider):
