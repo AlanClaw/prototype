@@ -1,0 +1,6 @@
+/toy
+*.pyc
+*.log
+/*.project
+/*.pydevproject
+/.settings
