@@ -1,6 +1,6 @@
 /toy
 *.pyc
-/MyMovieSecretary/MovieSpider/MovieSpider/spiders/*.pyc
+*.log
 /*.project
 /*.pydevproject
 /.settings
